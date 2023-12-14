@@ -133,8 +133,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\LearnOpenGL\glad.c" />
+    <ClCompile Include="glad.c" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Octree.cpp" />
     <ClCompile Include="Shader.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -142,12 +143,16 @@
     <None Include="Vertex.glsl" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Octree.h" />
     <ClInclude Include="Shader.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="C:\Users\Alex Blanchard\Downloads\bunny_32x25x32.txt" />
     <Text Include="teapot_128x63x80.txt" />
     <Text Include="teapot_48x24x30.txt" />
+    <Text Include="teapot_501x245x312.txt" />
+    <Text Include="teapot_526x257x328.txt" />
+    <Text Include="torus_17x5x17.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

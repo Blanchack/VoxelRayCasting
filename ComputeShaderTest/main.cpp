@@ -12,6 +12,8 @@
 #include <sstream>
 #include <vector>
 #include <string>
+#include <stdlib.h>
+#include "Octree.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window, glm::vec3& cameraRight, glm::vec3& cameraUp, glm::vec3& cameraLoc, glm::vec3& cameraDirection, float& phi, float& theta);
@@ -19,13 +21,12 @@ void processInput(GLFWwindow* window, glm::vec3& cameraRight, glm::vec3& cameraU
 float const WIDTH = 800;
 float const HEIGHT = 600;
 
-struct Voxel
-{
-	glm::vec4 pos;
-	glm::vec4 col;
-};
+enum dataStructure {OCTREE, LIST};
 
-void loadModel(std::string fileDir, std::vector<Voxel>& data) {
+std::vector<Voxel> loadModel(std::string fileDir, dataStructure ds) {
+	Octree octree;
+	std::vector<Voxel> data;
+
 	std::ifstream inFile;
 	inFile.open(fileDir);
 
@@ -45,7 +46,20 @@ void loadModel(std::string fileDir, std::vector<Voxel>& data) {
 
 			if (valores.size() == 6) {
 				Voxel voxel = { glm::vec4(valores[0], valores[1], valores[2], 1.0f), glm::vec4(valores[3], valores[4], valores[5], 1.0f) };
-				data.push_back(voxel);
+
+				switch (ds)
+				{
+				case OCTREE:
+					octree.insertVoxel(glm::vec3(valores[0] + 0.5f, valores[1] + 0.5f, valores[2] + 0.5f));
+					break;
+				case LIST:
+					data.push_back(voxel);
+					break;
+				default:
+					break;
+				}
+
+
 				valores.clear();
 			}
 			else {
@@ -60,7 +74,10 @@ void loadModel(std::string fileDir, std::vector<Voxel>& data) {
 		std::cerr << "No se pudo abrir el archivo." << std::endl;
 	}
 
+	if (ds == OCTREE)
+		data = octree.getSerializedData();
 
+	return data;
 
 }
 
@@ -120,11 +137,13 @@ int main() {
 	Shader shader("Vertex.glsl", "Fragment.glsl");
 	shader.use();
 
+	//
+
 	glm::vec2 resolution = glm::vec2(WIDTH, HEIGHT);
 	int VPDlocation = glGetUniformLocation(shader.getId(), "windowDimensions");
 	glProgramUniform2fv(shader.getId(), VPDlocation, 1, glm::value_ptr(resolution));
 
-	glm::vec3 cameraLoc = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 cameraLoc = glm::vec3(224.0f, 0.0f, 0.0f);
 
 	glm::vec3 cameraDirection = glm::vec3(0.0f, 0.0f, 1.0f);
 
@@ -145,35 +164,56 @@ int main() {
 	int cameraRightLocation = glad_glGetUniformLocation(shader.getId(), "cameraRight");
 	glProgramUniform3fv(shader.getId(), cameraRightLocation, 1, glm::value_ptr(cameraRight));
 
-	std::vector<Voxel> voxelData;
 
-	/*Voxel a = {glm::vec4(4.0f,-1.0f,8.0f,1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)};
-	Voxel b = { glm::vec4(1.0f,-3.0f,4.0f,1.0f), glm::vec4(0.3f, 0.8f, 0.6f, 1.0f) };
-	Voxel c = { glm::vec4(0.0f,1.0f,3.0f,1.0f), glm::vec4(0.0f, 0.2f, 0.5f, 1.0f) };
-	Voxel d = { glm::vec4(-2.0f,-1.0f,3.0f,1.0f), glm::vec4(0.0f, 1.0f, 0.5f, 1.0f) };
-	Voxel e = { glm::vec4(-3.0f, 0.0f, 3.0f, 1.0f), glm::vec4(1.0f, 0.39f , 0.52f, 1.0f) };
+	//
+	dataStructure ds;
+	int intDataStructure;
 
-	voxelData.push_back(a);
-	voxelData.push_back(b);
-	voxelData.push_back(c);
-	voxelData.push_back(d);
-	voxelData.push_back(e);*/
+	std::cout << "Indicar tipo de estructura:\n" << "Octree : 0\n" << "Lista : 1\n";
+	std::cin >> intDataStructure;
 
-	loadModel("teapot_128x63x80.txt", voxelData);
+	ds = static_cast<dataStructure>(intDataStructure);
+
+	shader.setInt("selectedDataStructure", intDataStructure);
+
+	Octree octree;
+
+	std::vector<Voxel> data = loadModel("teapot_526x257x328.txt", ds);
+
+	//for (Voxel x : data) std::cout << x.pos.x << " " << x.pos.y << " " << x.pos.z << " " << x.pos.w << " " << x.data.x << " " << x.data.y << " " << x.data.z << " " << x.data.w << " " << std::endl;
+
+	std::cout << data.size();
+
 
 	unsigned int SSBO;
 
 
 	glGenBuffers(1, &SSBO);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, voxelData.size() * sizeof(Voxel), voxelData.data(), GL_DYNAMIC_DRAW);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, data.size() * sizeof(Voxel), data.data(), GL_DYNAMIC_DRAW);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, SSBO);
 
 	float phi = 0.0f;
 	float theta = 0.0f;
 
+	GLint SSBOsize;
+	glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &SSBOsize);
+	std::cout << "GL_MAX_SHADER_STORAGE_BLOCK_SIZE is " << SSBOsize << " bytes." << std::endl;
+
+	double lastTime = glfwGetTime();
+	unsigned long  nbFrames = 0;
 	while (!glfwWindowShouldClose(window))
 	{
+
+		// Measure speed
+		double currentTime = glfwGetTime();
+		nbFrames++;
+		if (currentTime - lastTime >= 1.0) { // If last prinf() was more than 1 sec ago
+			// printf and reset timer
+			std::cout << "ms/frame: " << 1000.0 / double(nbFrames)<<std::endl;
+			nbFrames = 0;
+			lastTime += 1.0;
+		}
 		// input
 		// -----
 		cameraDirection = glm::vec3(glm::sin(theta) * glm::cos(phi), glm::sin(theta) * glm::sin(phi), glm::cos(theta));
@@ -248,6 +288,9 @@ void processInput(GLFWwindow* window, glm::vec3& cameraRight, glm::vec3& cameraU
 	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
 		theta -= 0.02f;
 	}
+	//std::cout << cameraLoc.x << " " << cameraLoc.y << " " << cameraLoc.z << " " << std::endl;
+	//std::cout << cameraDirection.x << " " << cameraDirection.y << " " << cameraDirection.z << " " << std::endl;
+	//std::cout << std::endl;
 	/*if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
 		phi += 0.02f;
 	}
