@@ -165,6 +165,8 @@ int main() {
 	glProgramUniform3fv(shader.getId(), cameraRightLocation, 1, glm::value_ptr(cameraRight));
 
 
+	//hasta aqui en Renderer.cpp
+
 	//
 	dataStructure ds;
 	int intDataStructure;
@@ -288,13 +290,4 @@ void processInput(GLFWwindow* window, glm::vec3& cameraRight, glm::vec3& cameraU
 	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
 		theta -= 0.02f;
 	}
-	//std::cout << cameraLoc.x << " " << cameraLoc.y << " " << cameraLoc.z << " " << std::endl;
-	//std::cout << cameraDirection.x << " " << cameraDirection.y << " " << cameraDirection.z << " " << std::endl;
-	//std::cout << std::endl;
-	/*if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-		phi += 0.02f;
-	}
-	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-		phi -= 0.02f;
-	}*/
 }
